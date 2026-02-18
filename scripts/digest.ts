@@ -401,18 +401,22 @@ async function callOpenAICompatible(
   model: string
 ): Promise<string> {
   const normalizedBase = apiBase.replace(/\/+$/, '');
+  const isMoonshot = normalizedBase.includes('moonshot');
+  const requestBody: Record<string, unknown> = {
+    model,
+    messages: [{ role: 'user', content: prompt }],
+  };
+  if (!isMoonshot) {
+    requestBody.temperature = 0.3;
+    requestBody.top_p = 0.8;
+  }
   const response = await fetch(`${normalizedBase}/chat/completions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${apiKey}`,
     },
-    body: JSON.stringify({
-      model,
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.3,
-      top_p: 0.8,
-    }),
+    body: JSON.stringify(requestBody),
   });
 
   if (!response.ok) {
