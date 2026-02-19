@@ -6,11 +6,127 @@
   <title>Caspar's AI 每日技术精选</title>
   <script type="module" src="https://cdn.jsdelivr.net/gh/zerodevx/zero-md@2/dist/zero-md.min.js"></script>
   <style>
-    body { max-width: 800px; margin: 0 auto; padding: 20px; background: #f9f9f9; }
-    zero-md { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+    body { 
+      max-width: 800px; 
+      margin: 0 auto; 
+      padding: 20px; 
+      background: #f4f5f7; 
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+    /* 顶部导航栏样式 */
+    .header { 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      margin-bottom: 20px; 
+      background: white;
+      padding: 15px 25px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    }
+    .header h2 { margin: 0; font-size: 1.2rem; color: #333; }
+    .date-picker-container { display: flex; align-items: center; gap: 10px; }
+    
+    /* 原生日历选择器美化 */
+    input[type="date"] { 
+      padding: 8px 12px; 
+      border-radius: 6px; 
+      border: 1px solid #ddd; 
+      font-size: 14px; 
+      cursor: pointer;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input[type="date"]:hover { border-color: #007bff; }
+    
+    zero-md { 
+      background: white; 
+      padding: 30px; 
+      border-radius: 8px; 
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05); 
+    }
+    
+    /* 错误提示框 */
+    .error-msg { 
+      background: #fff3f3; 
+      color: #d63031; 
+      padding: 20px; 
+      text-align: center; 
+      border-radius: 8px; 
+      display: none; 
+      border: 1px solid #ffcccc;
+    }
+    .return-today {
+      color: #007bff;
+      cursor: pointer;
+      text-decoration: underline;
+      margin-left: 10px;
+    }
   </style>
 </head>
 <body>
-  <zero-md src="digest.md"></zero-md>
+
+  <div class="header">
+    <h2>📰 AI 每日精选</h2>
+    <div class="date-picker-container">
+      <label for="history-date" style="font-size: 14px; color: #666;">📅 历史回顾：</label>
+      <input type="date" id="history-date" title="选择日期查看历史日报">
+    </div>
+  </div>
+
+  <div id="error-msg" class="error-msg">
+    ⚠️ 抱歉，没有找到该日期的日报。<span class="return-today" onclick="loadToday()">点击返回今日最新</span>
+  </div>
+
+  <zero-md id="md-viewer" src="digest.md"></zero-md>
+
+  <script>
+    const dateInput = document.getElementById('history-date');
+    const mdViewer = document.getElementById('md-viewer');
+    const errorMsg = document.getElementById('error-msg');
+
+    // 1. 初始化：限制日历不能选择“未来”的日期
+    const today = new Date();
+    // 考虑时区偏移，确保提取的 YYYY-MM-DD 是本地时间
+    const offset = today.getTimezoneOffset() * 60000;
+    const localTodayStr = new Date(today.getTime() - offset).toISOString().split('T')[0];
+    dateInput.max = localTodayStr;
+
+    // 2. 核心逻辑：监听日期改变事件
+    dateInput.addEventListener('change', async (e) => {
+      const selectedDate = e.target.value; // 格式: 2026-02-19
+      if (!selectedDate) return;
+
+      // 转换为我们在 GitHub Actions 里定义的文件名格式: 20260219
+      const formattedDate = selectedDate.replace(/-/g, '');
+      const targetFile = `archives/digest-${formattedDate}.md`;
+
+      // 3. 容错检查：先发一个轻量级的 HEAD 请求，看看文件在不在
+      try {
+        const response = await fetch(targetFile, { method: 'HEAD' });
+        if (response.ok) {
+          // 文件存在，渲染新的 MD
+          errorMsg.style.display = 'none';
+          mdViewer.style.display = 'block';
+          mdViewer.src = targetFile;
+        } else {
+          // 文件不存在 (404 错误)
+          mdViewer.style.display = 'none';
+          errorMsg.style.display = 'block';
+        }
+      } catch (error) {
+        console.error('检查文件失败:', error);
+      }
+    });
+
+    // 4. 返回今天最新版的功能函数
+    function loadToday() {
+      dateInput.value = ''; // 清空日历选择
+      errorMsg.style.display = 'none';
+      mdViewer.style.display = 'block';
+      mdViewer.src = 'digest.md'; // 重新指向固定的最新版
+    }
+  </script>
+
 </body>
 </html>
