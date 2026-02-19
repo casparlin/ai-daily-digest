@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Caspar's AI 每日技术精选</title>
+  <title>Caspar's AI 每日精选</title>
   <script type="module" src="https://cdn.jsdelivr.net/gh/zerodevx/zero-md@2/dist/zero-md.min.js"></script>
   <style>
     body { 
@@ -13,32 +13,76 @@
       background: #f4f5f7; 
       font-family: system-ui, -apple-system, sans-serif;
     }
-    /* 顶部导航栏样式 */
+    
+    /* 顶部导航容器 */
     .header { 
       display: flex; 
-      justify-content: space-between; 
+      flex-direction: column;
       align-items: center; 
-      margin-bottom: 20px; 
-      background: white;
-      padding: 15px 25px;
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+      margin-bottom: 30px; 
     }
-    .header h2 { margin: 0; font-size: 1.2rem; color: #333; }
-    .date-picker-container { display: flex; align-items: center; gap: 10px; }
-    
-    /* 原生日历选择器美化 */
+    .header h2 { 
+      margin: 0 0 20px 0; 
+      color: #333; 
+      font-size: 1.5rem;
+    }
+
+    /* 日期切换器组 - 还原截图风格 */
+    .nav-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: white;
+      padding: 12px 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+    }
+
+    /* 左右控制按钮 */
+    .nav-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border: 1px solid #eaeaea;
+      background: #fafafa;
+      border-radius: 6px;
+      cursor: pointer;
+      color: #c88181; /* 截图中的箭头颜色 */
+      font-size: 18px;
+      font-weight: bold;
+      transition: all 0.2s ease;
+    }
+    .nav-btn:hover:not(:disabled) {
+      background: #fff;
+      border-color: #d89999;
+      box-shadow: 0 0 10px rgba(100, 150, 255, 0.2); /* 截图右侧那隐约的蓝色光晕效果 */
+    }
+    .nav-btn:disabled {
+      color: #ccc;
+      cursor: not-allowed;
+      background: #f5f5f5;
+    }
+
+    /* 原生日历输入框美化 */
     input[type="date"] { 
       padding: 8px 12px; 
+      border: 1px solid #eaeaea; 
       border-radius: 6px; 
-      border: 1px solid #ddd; 
-      font-size: 14px; 
+      font-size: 16px; 
+      font-family: monospace;
+      color: #333;
       cursor: pointer;
       outline: none;
-      transition: border-color 0.2s;
+      background: #fff;
+      font-weight: 500;
     }
-    input[type="date"]:hover { border-color: #007bff; }
+    input[type="date"]:hover {
+      border-color: #ccc;
+    }
     
+    /* Markdown 容器 */
     zero-md { 
       background: white; 
       padding: 30px; 
@@ -46,86 +90,123 @@
       box-shadow: 0 4px 6px rgba(0,0,0,0.05); 
     }
     
-    /* 错误提示框 */
+    /* 极简错误提示 */
     .error-msg { 
-      background: #fff3f3; 
-      color: #d63031; 
-      padding: 20px; 
+      color: #888; 
+      padding: 40px; 
       text-align: center; 
-      border-radius: 8px; 
+      font-size: 16px;
       display: none; 
-      border: 1px solid #ffcccc;
     }
-    .return-today {
-      color: #007bff;
-      cursor: pointer;
-      text-decoration: underline;
-      margin-left: 10px;
-    }
-  </style>
+  </script>
 </head>
 <body>
 
   <div class="header">
-    <h2>📰 AI 每日精选</h2>
-    <div class="date-picker-container">
-      <label for="history-date" style="font-size: 14px; color: #666;">📅 历史回顾：</label>
-      <input type="date" id="history-date" title="选择日期查看历史日报">
+    <h2>📰 AI 每日技术精选</h2>
+    <div class="nav-group">
+      <button class="nav-btn" id="prev-btn" title="前一天">←</button>
+      <input type="date" id="history-date">
+      <button class="nav-btn" id="next-btn" title="后一天">→</button>
     </div>
   </div>
 
   <div id="error-msg" class="error-msg">
-    ⚠️ 抱歉，没有找到该日期的日报。<span class="return-today" onclick="loadToday()">点击返回今日最新</span>
+    该日期没有日报
   </div>
 
   <zero-md id="md-viewer" src="digest.md"></zero-md>
 
   <script>
     const dateInput = document.getElementById('history-date');
+    const prevBtn = document.getElementById('prev-btn');
+    const nextBtn = document.getElementById('next-btn');
     const mdViewer = document.getElementById('md-viewer');
     const errorMsg = document.getElementById('error-msg');
 
-    // 1. 初始化：限制日历不能选择“未来”的日期
-    const today = new Date();
-    // 考虑时区偏移，确保提取的 YYYY-MM-DD 是本地时间
-    const offset = today.getTimezoneOffset() * 60000;
-    const localTodayStr = new Date(today.getTime() - offset).toISOString().split('T')[0];
+    // 工具函数：获取格式化的本地日期 (YYYY-MM-DD)
+    function getLocalDateString(dateObj) {
+      const offset = dateObj.getTimezoneOffset() * 60000;
+      return new Date(dateObj.getTime() - offset).toISOString().split('T')[0];
+    }
+
+    const localTodayStr = getLocalDateString(new Date());
+    
+    // 初始化日期选择器
     dateInput.max = localTodayStr;
+    dateInput.value = localTodayStr; // 默认显示今天
 
-    // 2. 核心逻辑：监听日期改变事件
-    dateInput.addEventListener('change', async (e) => {
-      const selectedDate = e.target.value; // 格式: 2026-02-19
-      if (!selectedDate) return;
+    // 更新按钮状态（今天不能点"下一天"）
+    function updateBtnState() {
+      nextBtn.disabled = dateInput.value >= localTodayStr;
+    }
 
-      // 转换为我们在 GitHub Actions 里定义的文件名格式: 20260219
-      const formattedDate = selectedDate.replace(/-/g, '');
-      const targetFile = `archives/digest-${formattedDate}.md`;
+    // 核心加载逻辑
+    async function loadDigest(dateStr) {
+      if (!dateStr) return;
+      updateBtnState();
 
-      // 3. 容错检查：先发一个轻量级的 HEAD 请求，看看文件在不在
+      // 如果选的是今天，优先尝试加载根目录的最新版，保证万无一失
+      let targetFile = 'digest.md';
+      
+      // 如果不是今天，去 archives 文件夹找历史归档
+      if (dateStr !== localTodayStr) {
+        const formattedDate = dateStr.replace(/-/g, ''); // 变成 20260219
+        targetFile = `archives/digest-${formattedDate}.md`;
+      }
+
       try {
+        // 先发送 HEAD 请求确认文件存在
         const response = await fetch(targetFile, { method: 'HEAD' });
         if (response.ok) {
-          // 文件存在，渲染新的 MD
           errorMsg.style.display = 'none';
           mdViewer.style.display = 'block';
           mdViewer.src = targetFile;
         } else {
-          // 文件不存在 (404 错误)
+          // 如果根目录找不到今天的，尝试找今天对应的 archive 文件
+          if (dateStr === localTodayStr) {
+            const formattedToday = localTodayStr.replace(/-/g, '');
+            const fallbackFile = `archives/digest-${formattedToday}.md`;
+            const fallbackResp = await fetch(fallbackFile, { method: 'HEAD' });
+            if (fallbackResp.ok) {
+              errorMsg.style.display = 'none';
+              mdViewer.style.display = 'block';
+              mdViewer.src = fallbackFile;
+              return;
+            }
+          }
           mdViewer.style.display = 'none';
           errorMsg.style.display = 'block';
         }
       } catch (error) {
-        console.error('检查文件失败:', error);
+        mdViewer.style.display = 'none';
+        errorMsg.style.display = 'block';
       }
+    }
+
+    // 监听事件：日历手动改变
+    dateInput.addEventListener('change', (e) => {
+      loadDigest(e.target.value);
     });
 
-    // 4. 返回今天最新版的功能函数
-    function loadToday() {
-      dateInput.value = ''; // 清空日历选择
-      errorMsg.style.display = 'none';
-      mdViewer.style.display = 'block';
-      mdViewer.src = 'digest.md'; // 重新指向固定的最新版
-    }
+    // 监听事件：前一天
+    prevBtn.addEventListener('click', () => {
+      const current = new Date(dateInput.value);
+      current.setDate(current.getDate() - 1);
+      dateInput.value = getLocalDateString(current);
+      loadDigest(dateInput.value);
+    });
+
+    // 监听事件：后一天
+    nextBtn.addEventListener('click', () => {
+      const current = new Date(dateInput.value);
+      current.setDate(current.getDate() + 1);
+      dateInput.value = getLocalDateString(current);
+      loadDigest(dateInput.value);
+    });
+
+    // 页面首次加载时初始化按钮状态
+    updateBtnState();
   </script>
 
 </body>
