@@ -6,116 +6,29 @@
   <title>Caspar's AI 每日精选</title>
   <script type="module" src="https://cdn.jsdelivr.net/gh/zerodevx/zero-md@2/dist/zero-md.min.js"></script>
   <style>
-    body { 
-      max-width: 800px; 
-      margin: 0 auto; 
-      padding: 20px; 
-      background: #f4f5f7; 
-      font-family: system-ui, -apple-system, sans-serif;
-    }
-    
-    /* 顶部导航容器 */
-    .header { 
-      display: flex; 
-      flex-direction: column;
-      align-items: center; 
-      margin-bottom: 30px; 
-    }
-    .header h2 { 
-      margin: 0 0 20px 0; 
-      color: #333; 
-      font-size: 1.5rem;
-    }
-
-    /* 日期切换器组 - 还原截图风格 */
-    .nav-group {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      background: white;
-      padding: 12px 20px;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.03);
-    }
-
-    /* 左右控制按钮 */
-    .nav-btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 40px;
-      height: 40px;
-      border: 1px solid #eaeaea;
-      background: #fafafa;
-      border-radius: 6px;
-      cursor: pointer;
-      color: #c88181; /* 截图中的箭头颜色 */
-      font-size: 18px;
-      font-weight: bold;
-      transition: all 0.2s ease;
-    }
-    .nav-btn:hover:not(:disabled) {
-      background: #fff;
-      border-color: #d89999;
-      box-shadow: 0 0 10px rgba(100, 150, 255, 0.2); /* 截图右侧那隐约的蓝色光晕效果 */
-    }
-    .nav-btn:disabled {
-      color: #ccc;
-      cursor: not-allowed;
-      background: #f5f5f5;
-    }
-
-    /* 原生日历输入框美化 */
-    input[type="date"] { 
-      padding: 8px 12px; 
-      border: 1px solid #eaeaea; 
-      border-radius: 6px; 
-      font-size: 16px; 
-      font-family: monospace;
-      color: #333;
-      cursor: pointer;
-      outline: none;
-      background: #fff;
-      font-weight: 500;
-    }
-    input[type="date"]:hover {
-      border-color: #ccc;
-    }
-    
-    /* Markdown 容器 */
-    zero-md { 
-      background: white; 
-      padding: 30px; 
-      border-radius: 8px; 
-      box-shadow: 0 4px 6px rgba(0,0,0,0.05); 
-    }
-    
-    /* 极简错误提示 */
-    .error-msg { 
-      color: #888; 
-      padding: 40px; 
-      text-align: center; 
-      font-size: 16px;
-      display: none; 
-    }
-  </script>
+    body { max-width: 800px; margin: 0 auto; padding: 20px; background: #f4f5f7; font-family: sans-serif; }
+    .header { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+    .header h2 { margin: 0 0 15px 0; color: #333; }
+    .nav-group { display: flex; justify-content: center; gap: 10px; }
+    input[type="date"] { padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 16px; }
+    button { padding: 8px 15px; border: 1px solid #ddd; background: #fafafa; border-radius: 4px; cursor: pointer; }
+    zero-md { display: none; background: white; padding: 30px; border-radius: 8px; }
+    .error-msg { display: none; text-align: center; padding: 40px; color: #888; }
+  </style>
 </head>
 <body>
 
   <div class="header">
     <h2>📰 AI 每日技术精选</h2>
     <div class="nav-group">
-      <button class="nav-btn" id="prev-btn" title="前一天">←</button>
+      <button id="prev-btn">←</button>
       <input type="date" id="history-date">
-      <button class="nav-btn" id="next-btn" title="后一天">→</button>
+      <button id="next-btn">→</button>
     </div>
   </div>
 
-  <div id="error-msg" class="error-msg">
-    该日期没有日报
-  </div>
-
-  <zero-md id="md-viewer" src="digest.md"></zero-md>
+  <div id="error-msg" class="error-msg">该日期没有日报</div>
+  <zero-md id="md-viewer"></zero-md>
 
   <script>
     const dateInput = document.getElementById('history-date');
@@ -124,90 +37,62 @@
     const mdViewer = document.getElementById('md-viewer');
     const errorMsg = document.getElementById('error-msg');
 
-    // 工具函数：获取格式化的本地日期 (YYYY-MM-DD)
     function getLocalDateString(dateObj) {
       const offset = dateObj.getTimezoneOffset() * 60000;
       return new Date(dateObj.getTime() - offset).toISOString().split('T')[0];
     }
 
     const localTodayStr = getLocalDateString(new Date());
-    
-    // 初始化日期选择器
     dateInput.max = localTodayStr;
-    dateInput.value = localTodayStr; // 默认显示今天
+    dateInput.value = localTodayStr;
 
-    // 更新按钮状态（今天不能点"下一天"）
-    function updateBtnState() {
-      nextBtn.disabled = dateInput.value >= localTodayStr;
-    }
-
-    // 核心加载逻辑
     async function loadDigest(dateStr) {
       if (!dateStr) return;
-      updateBtnState();
+      nextBtn.disabled = (dateStr >= localTodayStr);
 
-      // 如果选的是今天，优先尝试加载根目录的最新版，保证万无一失
       let targetFile = 'digest.md';
-      
-      // 如果不是今天，去 archives 文件夹找历史归档
       if (dateStr !== localTodayStr) {
-        const formattedDate = dateStr.replace(/-/g, ''); // 变成 20260219
-        targetFile = `archives/digest-${formattedDate}.md`;
+        targetFile = `archives/digest-${dateStr.replace(/-/g, '')}.md`;
       }
 
       try {
-        // 先发送 HEAD 请求确认文件存在
-        const response = await fetch(targetFile, { method: 'HEAD' });
-        if (response.ok) {
+        const res = await fetch(targetFile, { method: 'HEAD' });
+        if (res.ok) {
           errorMsg.style.display = 'none';
           mdViewer.style.display = 'block';
-          mdViewer.src = targetFile;
+          mdViewer.setAttribute('src', targetFile);
         } else {
-          // 如果根目录找不到今天的，尝试找今天对应的 archive 文件
+          // 容错：如果今天是最新，但根目录没有，尝试去 archives 找
           if (dateStr === localTodayStr) {
-            const formattedToday = localTodayStr.replace(/-/g, '');
-            const fallbackFile = `archives/digest-${formattedToday}.md`;
-            const fallbackResp = await fetch(fallbackFile, { method: 'HEAD' });
-            if (fallbackResp.ok) {
+            const fallback = `archives/digest-${localTodayStr.replace(/-/g, '')}.md`;
+            const fallbackRes = await fetch(fallback, { method: 'HEAD' });
+            if (fallbackRes.ok) {
               errorMsg.style.display = 'none';
               mdViewer.style.display = 'block';
-              mdViewer.src = fallbackFile;
+              mdViewer.setAttribute('src', fallback);
               return;
             }
           }
           mdViewer.style.display = 'none';
           errorMsg.style.display = 'block';
         }
-      } catch (error) {
+      } catch (e) {
         mdViewer.style.display = 'none';
         errorMsg.style.display = 'block';
       }
     }
 
-    // 监听事件：日历手动改变
-    dateInput.addEventListener('change', (e) => {
-      loadDigest(e.target.value);
-    });
-
-    // 监听事件：前一天
+    dateInput.addEventListener('change', e => loadDigest(e.target.value));
     prevBtn.addEventListener('click', () => {
-      const current = new Date(dateInput.value);
-      current.setDate(current.getDate() - 1);
-      dateInput.value = getLocalDateString(current);
-      loadDigest(dateInput.value);
+      let d = new Date(dateInput.value); d.setDate(d.getDate() - 1);
+      dateInput.value = getLocalDateString(d); loadDigest(dateInput.value);
     });
-
-    // 监听事件：后一天
     nextBtn.addEventListener('click', () => {
-      const current = new Date(dateInput.value);
-      current.setDate(current.getDate() + 1);
-      dateInput.value = getLocalDateString(current);
-      loadDigest(dateInput.value);
+      let d = new Date(dateInput.value); d.setDate(d.getDate() + 1);
+      dateInput.value = getLocalDateString(d); loadDigest(dateInput.value);
     });
 
-    // 页面首次加载时初始化按钮状态
-    updateBtnState();
+    loadDigest(localTodayStr);
   </script>
-
 </body>
 </html>
