@@ -771,6 +771,11 @@ ${articleList}
 // Visualization Helpers
 // ============================================================================
 
+function toUTC8String(date: Date): string {
+  // 加上 8 小时的毫秒数 (8 * 60 * 60 * 1000 = 28800000)
+  return new Date(date.getTime() + 28800000).toISOString();
+}
+
 function humanizeTime(pubDate: Date): string {
   const diffMs = Date.now() - pubDate.getTime();
   const diffMins = Math.floor(diffMs / 60_000);
@@ -780,7 +785,7 @@ function humanizeTime(pubDate: Date): string {
   if (diffMins < 60) return `${diffMins} 分钟前`;
   if (diffHours < 24) return `${diffHours} 小时前`;
   if (diffDays < 7) return `${diffDays} 天前`;
-  return pubDate.toISOString().slice(0, 10);
+  return toUTC8String(pubDate).slice(0, 10);
 }
 
 function generateKeywordBarChart(articles: ScoredArticle[]): string {
@@ -898,7 +903,9 @@ function generateDigestReport(articles: ScoredArticle[], highlights: string, sta
   lang: string;
 }): string {
   const now = new Date();
-  const dateStr = now.toISOString().split('T')[0];
+  //const dateStr = now.toISOString().split('T')[0];
+  const nowUTC8Str = toUTC8String(now);
+  const dateStr = nowUTC8Str.split('T')[0];
   
   let report = `# 📰 AI 博客每日精选 — ${dateStr}\n\n`;
   report += `> 来自 Karpathy 推荐的 ${stats.totalFeeds} 个顶级技术博客，AI 精选 Top ${articles.length}\n\n`;
@@ -991,7 +998,8 @@ function generateDigestReport(articles: ScoredArticle[], highlights: string, sta
   }
 
   // ── Footer ──
-  report += `*生成于 ${dateStr} ${now.toISOString().split('T')[1]?.slice(0, 5) || ''} | 扫描 ${stats.successFeeds} 源 → 获取 ${stats.totalArticles} 篇 → 精选 ${articles.length} 篇*\n`;
+  report += `*生成于 ${dateStr} ${nowUTC8Str.split('T')[1]?.slice(0, 5) || ''} | 扫描 ${stats.successFeeds} 源 → 获取 ${stats.totalArticles} 篇 → 精选 ${articles.length} 篇*\n`;
+  //report += `*生成于 ${dateStr} ${now.toISOString().split('T')[1]?.slice(0, 5) || ''} | 扫描 ${stats.successFeeds} 源 → 获取 ${stats.totalArticles} 篇 → 精选 ${articles.length} 篇*\n`;
   report += `*基于 [Hacker News Popularity Contest 2025](https://refactoringenglish.com/tools/hn-popularity/) RSS 源列表，由 [Andrej Karpathy](https://x.com/karpathy) 推荐*\n`;
   report += `*由「懂点儿AI」制作，欢迎关注同名微信公众号获取更多 AI 实用技巧 💡*\n`;
 
