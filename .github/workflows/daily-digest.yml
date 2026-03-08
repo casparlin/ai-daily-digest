@@ -1,9 +1,9 @@
 name: Daily AI Digest Generator
 
 on:
-  schedule:
-    # 每天 UTC 时间 21:00 运行（对应北京时间早上 6:00）
-    - cron: '0 21 * * *'
+  #schedule:
+  #  # 每天 UTC 时间 21:00 运行（对应北京时间早上 6:00）
+  #  - cron: '0 21 * * *'
   workflow_dispatch: # 允许手动在 GitHub 网页触发
 
 jobs:
